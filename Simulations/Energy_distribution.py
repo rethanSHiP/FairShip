@@ -12,11 +12,11 @@ import awkward as ak
 def main():
     parser = argparse.ArgumentParser(description="Propagate muons and plot deviations.")
     parser.add_argument("--field_file", default="../files/2025_02_12_SHiP_SpectrometerField_ECN3_MgB2.root", help="Path to magnet field file")
-    parser.add_argument("--sim_file", default="energy_scan/sim_*.root", help="Path to simulation files")
     parser.add_argument("--z_center", type=float, default=8957.0, help="Z offset for field map")
     parser.add_argument("--UBT_z", type=float, default=3200.0, help="Target Z position")
     parser.add_argument("--step_size", type=float, default=-5.0, help="Step size for RK4")
-    parser.add_argument("--tag", default="distributions", help="Filename for the plot")
+    parser.add_argument("--in_dir", default="energy_scan", help="Path to simulation files")
+    parser.add_argument("--out_dir", type =str, default="energy_scan", help="name the output directory")
     args = parser.parse_args()
 
     # ================================================
@@ -182,9 +182,9 @@ def main():
     # ==========================================
     # 5. MAIN LOOP
     # ==========================================
-    simulation_paths = glob.glob("energy_scan/sim_muon_*.root")
+    simulation_paths = glob.glob(os.path.join(args.in_dir, "sim_muon_*.root"))
     
-    output_dir = "processed_data"
+    output_dir = args.out_dir + "_reco"
     os.makedirs(output_dir, exist_ok=True)
     
     for i,sim in enumerate(simulation_paths): 

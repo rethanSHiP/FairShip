@@ -10,7 +10,7 @@ import re
 
 def main():
     parser = argparse.ArgumentParser(description="Propagate muons and plot deviations.")
-    parser.add_argument("--sim_file", default="energy_scan/sim_*.root", help="Path to simulation files")
+    parser.add_argument("--sim_file", default="He_only_reco/sim_*.root", help="Path to simulation files")
     parser.add_argument("--tag", default="distributions", help="Filename for the plot")
     args = parser.parse_args()
 
@@ -29,7 +29,7 @@ def main():
             return float(match.group(1))
         return 0.0
 
-    simulation_paths = glob.glob("processed_data/B_sim_muon_*.root")
+    simulation_paths = glob.glob("He_only_reco/B_sim_muon_*.root")
     simulation_paths.sort(key=extract_energy_from_filename)
     pdf_name_hits = os.path.join(output_dir, "UBT_Distributions.pdf")
     pdf_name_momentum = os.path.join(output_dir, "UBT_Momentum.pdf")
@@ -400,6 +400,5 @@ def main():
         c2.Update()
         c2.SaveAs(os.path.join(output_dir, f"{axis}_MEAN.png"))
 
-        print(180/np.pi * np.arctan(2/50))
 if __name__ == "__main__":
     main()
