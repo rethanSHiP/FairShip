@@ -25,8 +25,6 @@ def _fraction_0_1(value: str) -> float:
     return v
 
 
-DownScaleDiMuon = False
-
 # Default HNL parameters
 theHNLMass = 1.0 * u.GeV
 theProductionCouplings = theDecayCouplings = None
@@ -157,9 +155,18 @@ pg_parser.add_argument(
     default=False,
     help="Print out the PG models that are available",
 )
+pg_parser.add_argument("--thetaMin", type=float, default=0, help="Minimum polar angle [deg] (default: 0)")
+pg_parser.add_argument("--thetaMax", type=float, default=0, help="Maximum polar angle [deg] (default: 0)")
 # === End of PG commands ===
 # === Genie subcommand ===
 genie_parser = subparsers.add_parser("Genie", help="Genie for reading and processing neutrino interactions")
+genie_parser.add_argument(
+    "--GenieOption",
+    dest="GenieOption",
+    default="simple_gevgen",
+    choices=["simple_gevgen", "genie_geometry"],
+    help="Genie generation option: (simple_gevgen, genie_geometry)",
+)
 genie_parser.add_argument(
     "--z_start_nu",
     dest="z_start_nu",
@@ -318,8 +325,8 @@ parser.add_argument("-D", "--display", dest="eventDisplay", help="store trajecto
 parser.add_argument(
     "--shieldName",
     help="The name of the muon shield in the database to use.",
-    default="TRY_2025",
-    choices=["TRY_2025"],
+    default="TRY_2026",
+    choices=["TRY_2025", "TRY_2026"],
 )
 parser.add_argument(
     "--MesonMother", dest="MM", help="Choose DP production meson source: pi0, eta, omega, eta1, eta11", default="pi0"
@@ -691,7 +698,9 @@ if options.command == "PG":
         sys.exit(0)
     myPgun.SetPRange(options.Estart, options.Eend)
     myPgun.SetPhiRange(0, 360)  # // Azimuth angle range [degree]
-    myPgun.SetThetaRange(0, 0)  # // Polar angle in lab system range [degree]
+    if options.thetaMin > options.thetaMax:
+        sys.exit(f"thetaMin ({options.thetaMin}) must not exceed thetaMax ({options.thetaMax})")
+    myPgun.SetThetaRange(options.thetaMin, options.thetaMax)  # Polar angle in lab system [degree]
     if options.bothCharges:
         myPgun.SetBothCharges(True, options.chargeFraction)
     if options.multiplePG:
@@ -751,9 +760,14 @@ if options.command == "Genie":
     ut.checkFileExists(inputFile)
     primGen.SetTarget(0.0, 0.0)  # do not interfere with GenieGenerator
     Geniegen = ROOT.GenieGenerator()
+
+    GenieOptions = {"simple_gevgen": 0, "genie_geometry": 3}
+    genie_option = GenieOptions[options.GenieOption]  # 0 standard, 3 GENIE geometry driver
+    Geniegen.SetGenerationOption(genie_option)
     if not Geniegen.Init(inputFile, options.firstEvent):
         raise RuntimeError(f"Failed to initialize GenieGenerator from input: {inputFile}")
-    Geniegen.SetPositions(ship_geo.target.z0, options.z_start_nu, options.z_end_nu)
+    if genie_option == 0:
+        Geniegen.SetPositions(ship_geo.target.z0, options.z_start_nu, options.z_end_nu)
     primGen.AddGenerator(Geniegen)
     ROOT.SetOwnership(Geniegen, False)  # C++ FairPrimaryGenerator takes ownership
     options.nEvents = Geniegen.GetNevents() if options.nEvents == -1 else min(options.nEvents, Geniegen.GetNevents())
@@ -822,12 +836,6 @@ if options.muonback:
     MuonBackgen.SetPaintRadius(options.PaintBeam * u.cm)
     MuonBackgen.SetSmearBeam(options.SmearBeam * u.cm)
     MuonBackgen.SetPhiRandomize(options.phiRandom)
-    if DownScaleDiMuon:
-        testf = ROOT.TFile.Open(inputFile[0])
-        if not testf.FileHeader.GetTitle().find("diMu100.0") < 0:
-            MuonBackgen.SetDownScaleDiMuon()  # avoid interference with boosted channels
-            print("MuonBackgenerator: set downscale for dimuon on")
-        testf.Close()
     if options.sameSeed:
         MuonBackgen.SetSameSeed(options.sameSeed)
     primGen.AddGenerator(MuonBackgen)

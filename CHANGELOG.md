@@ -13,6 +13,13 @@ it in future.
 ## Unreleased
 
 ### Added
+* Add option to split kaons and pions right before they decay, to increase the number of muons
+
+* Added TRY_2026 MS version.
+
+* Make particle gun polar angle configurable via `--thetaMin`/`--thetaMax`
+* Add `run_tracking_scan.py` to sweep the tracking benchmark over angle and multiplicity grids
+* Add charge-ID efficiency metric to the tracking benchmark
 
 ### Changed
 
@@ -24,6 +31,10 @@ it in future.
 
 * Restore `tPythia6Generator` instantiation from Python — broken since 26.02 by the `SHiP::Generator` base-class refactor leaving the file-based `Init` overloads pure virtual without a stub override (#1272)
 * Fix call to next Pythia event generation
+
+* Eliminate redundant hadron absorber field map
+
+* Fix Magnet MS5 and MS6 to store new SND conceptual design
 ### Removed
 
 * Remove unused legacy `Pythia6Generator` (custom text-format event-record reader from 2008, zero callsites anywhere in the tree). `tPythia6Generator` is unaffected.
@@ -33,6 +44,7 @@ it in future.
 ### Added
 
 * Add experimental script to import Muons and Matter pkl files
+* Added GenieOption to read simulations with the GENIE Geometry Driver (i.e. gevgen_fnal)
 * Add `TTreeGenerator` to read events from ROOT TTrees (including the converted M&M ntuples)
 * Add `--ttree` option to `run_simScript.py` for ROOT TTree input
 * Add `--target_composition` option to `makeDecay`, defaulting to Tungsten and mirroring the `makeCascade.py` flag
