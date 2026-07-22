@@ -15,9 +15,11 @@ def main():
     parser.add_argument("--z_center", type=float, default=8957.0, help="Z offset for field map")
     parser.add_argument("--UBT_z", type=float, default=3200.0, help="Target Z position")
     parser.add_argument("--step_size", type=float, default=-5.0, help="Step size for RK4")
-    parser.add_argument("--in_dir", default="energy_scan", help="Path to simulation files")
-    parser.add_argument("--out_dir", type =str, default="energy_scan", help="name the output directory")
+    parser.add_argument("--in_dir", default="energy_scan", help="Path to simulation files") 
+    parser.add_argument("--out_dir", type=str, default=None, help="name the output directory")
     args = parser.parse_args()
+
+    if args.out_dir is None: args.out_dir = args.in_dir
 
     # ================================================
     # 1. LOAD MAGNETIC FIELD & Get Derivatives for RK4
@@ -100,7 +102,7 @@ def main():
         valid_mask = ~np.isnan(x_sst_raw)
         if not np.any(valid_mask):
             print(f"Skipping {files}: 0 primary muons reached the SST.")
-            return [], [], [], []
+            return [], [], [], [], []
 
         # ==========================================
         # 4. PROPAGATE MUONS BACKWARDS TO UBT
@@ -126,6 +128,15 @@ def main():
         q = -1.0
         dz = args.step_size
         target_z = args.UBT_z
+
+        # Obtain the matter density transversed
+        x_he_accum = np.zeros(len(x))
+        x_sbt_accum = np.zeros(len(x))
+        distances = np.zeros(len(x))
+        
+        # Densities (g/cm^3)
+        rho_he = 1.675e-4 
+        rho_sbt = 0.863
 
         print(f"Propagating {len(x)} muons backwards...")
         # Propagate the muons backwards until they reach the UBT
@@ -153,12 +164,34 @@ def main():
             k4 = dz*get_derivatives_vec(x + k3[0], y + k3[1], z + dz, px + k3[2], py + k3[3], pz4, q = q)
             
             # Combine steps
-            x +=  (k1[0] + 2*k2[0] + 2*k3[0] + k4[0])/6.0
-            y +=  (k1[1] + 2*k2[1] + 2*k3[1] + k4[1])/6.0
-            px += (k1[2] + 2*k2[2] + 2*k3[2] + k4[2])/6.0
-            py += (k1[3] + 2*k2[3] + 2*k3[3] + k4[3])/6.0
+            dx  =  (k1[0] + 2*k2[0] + 2*k3[0] + k4[0])/6.0
+            dy  =  (k1[1] + 2*k2[1] + 2*k3[1] + k4[1])/6.0
+            dz  = dz
+            ds = np.sqrt(dx**2 + dy**2 + dz**2)
+            
+            dpx = (k1[2] + 2*k2[2] + 2*k3[2] + k4[2])/6.0
+            dpy = (k1[3] + 2*k2[3] + 2*k3[3] + k4[3])/6.0
+            
+            x += dx
+            y += dy
             z += dz
+            px += dpx
+            py += dpy
             pz = np.sqrt(np.maximum(0, p_total**2 - px**2 - py**2))
+            distances += ds
+
+            Z_start, Z_end = 3312.0, 8312.0
+            Y_inner_limit = 320.0 + ((300.0 - 320.0) / (Z_end - Z_start)) * (z - Z_start)
+            Y_outer_limit = Y_inner_limit + 27.0 # 25cm scintillator + 2cm steel
+            
+            abs_y = np.abs(y)
+
+            in_decay_volume = (z >= Z_start) & (z <= Z_end)
+            in_helium = in_decay_volume & (abs_y <= Y_inner_limit)
+            in_sbt = in_decay_volume & (abs_y > Y_inner_limit) & (abs_y <= Y_outer_limit)
+            
+            x_he_accum += np.where(in_helium, ds * rho_he, 0.0)
+            x_sbt_accum += np.where(in_sbt, ds * rho_sbt, 0.0)
 
         # Add results back to DataFrame
         ubt_positions_reco = [x,y,z]
@@ -167,17 +200,18 @@ def main():
         ubt_momentum_reco = [px, py, pz]
         ubt_momentum_true = [mc_px, mc_py, mc_pz]
 
-        return ubt_positions_reco, ubt_positions_true, ubt_momentum_reco, ubt_momentum_true
+        return ubt_positions_reco, ubt_positions_true, ubt_momentum_reco, ubt_momentum_true, x_he_accum, x_sbt_accum, distances
 
 
-    def Save_Propagated_Data(outputfile, pos_reco, pos_true, mom_reco, mom_true):
+    def Save_Propagated_Data(outputfile, pos_reco, pos_true, mom_reco, mom_true, x_he, x_sbt,dist):
         with uproot.recreate(outputfile) as f: 
             f["UBT_Muons"] = {
                 "X": pos_reco[0], "Y": pos_reco[1], "Z": pos_reco[2],
                 "X_true": pos_true[0], "Y_true": pos_true[1], "Z_true": pos_true[2],
                 "PX": mom_reco[0], "PY": mom_reco[1], "PZ": mom_reco[2],
-                "PX_true": mom_true[0], "PY_true": mom_true[1], "PZ_true": mom_true[2]
-            }
+                "PX_true": mom_true[0], "PY_true": mom_true[1], "PZ_true": mom_true[2],
+                "x_He": x_he, "x_SBT": x_sbt, "distances":dist
+                }
 
     # ==========================================
     # 5. MAIN LOOP
@@ -189,13 +223,13 @@ def main():
     
     for i,sim in enumerate(simulation_paths): 
         print(f"Processing simulation: {sim})")
-        positions, true_positions, momentum, true_momentum = Backward_Propagate_Muons(sim)
+        positions, true_positions, momentum, true_momentum, x_he, x_sbt, dist = Backward_Propagate_Muons(sim)
         if len(positions[0]) == 0: continue
 
         name = os.path.basename(sim)
         output = os.path.join(output_dir, f"B_{name}")
         
-        Save_Propagated_Data(output,positions, true_positions, momentum, true_momentum)
+        Save_Propagated_Data(output,positions, true_positions, momentum, true_momentum, x_he, x_sbt, dist)
     print("New proccessed files created")
 
 if __name__ == "__main__":
