@@ -697,7 +697,7 @@ if options.command == "PG":
         myPgun.PrintMomentumModels()
         sys.exit(0)
     myPgun.SetPRange(options.Estart, options.Eend)
-    myPgun.SetPhiRange(0, 360)  # // Azimuth angle range [degree]
+    myPgun.SetPhiRange(90, 90)  # // Azimuth angle range [degree] theta_x
     if options.thetaMin > options.thetaMax:
         sys.exit(f"thetaMin ({options.thetaMin}) must not exceed thetaMax ({options.thetaMax})")
     myPgun.SetThetaRange(options.thetaMin, options.thetaMax)  # Polar angle in lab system [degree]
