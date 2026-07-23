@@ -1,4 +1,4 @@
-FROM ghcr.io/prefix-dev/pixi:0.72.2-noble
+FROM ghcr.io/prefix-dev/pixi:0.73.0-noble
 
 WORKDIR /FairShip
 
@@ -10,7 +10,8 @@ RUN pixi install --locked && rm -rf ~/.cache/rattler
 COPY . /FairShip
 RUN pixi run --locked build
 
-RUN pixi shell-hook -s bash > /entrypoint.sh \
+RUN echo '#!/bin/bash' > /entrypoint.sh \
+    && pixi shell-hook -s bash >> /entrypoint.sh \
     && echo 'exec "$@"' >> /entrypoint.sh \
     && chmod +x /entrypoint.sh
 
