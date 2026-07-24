@@ -136,7 +136,7 @@ def main():
         
         # Densities (g/cm^3)
         rho_he = 1.675e-4 
-        rho_sbt = 0.863
+        rho_sbt = 1.032
 
         print(f"Propagating {len(x)} muons backwards...")
         # Propagate the muons backwards until they reach the UBT
@@ -180,15 +180,21 @@ def main():
             pz = np.sqrt(np.maximum(0, p_total**2 - px**2 - py**2))
             distances += ds
 
+            # Defining the limits of the SBT
             Z_start, Z_end = 3312.0, 8312.0
-            Y_inner_limit = 320.0 + ((300.0 - 320.0) / (Z_end - Z_start)) * (z - Z_start)
-            Y_outer_limit = Y_inner_limit + 27.0 # 25cm scintillator + 2cm steel
-            
+
+            Y_inner_limit = 270.0 + ((600.0 - 270.0) / (Z_end - Z_start)) * (z - Z_start)
+            Y_outer_limit = Y_inner_limit + 20.0
+
+            X_inner_limit = 100.0 + ((400.0 - 100.0) / (Z_end - Z_start)) * (z - Z_start)
+            X_outer_limit = X_inner_limit + 20.0
+
             abs_y = np.abs(y)
+            abs_x = np.abs(x)
 
             in_decay_volume = (z >= Z_start) & (z <= Z_end)
-            in_helium = in_decay_volume & (abs_y <= Y_inner_limit)
-            in_sbt = in_decay_volume & (abs_y > Y_inner_limit) & (abs_y <= Y_outer_limit)
+            in_helium = in_decay_volume & (abs_y <= Y_inner_limit) & (abs_x <= X_inner_limit)
+            in_sbt = in_decay_volume & (abs_y > Y_inner_limit) & (abs_y <= Y_outer_limit) & (abs_x > X_inner_limit) & (abs_x <= X_outer_limit)
             
             x_he_accum += np.where(in_helium, ds * rho_he, 0.0)
             x_sbt_accum += np.where(in_sbt, ds * rho_sbt, 0.0)

@@ -394,13 +394,43 @@ void veto::AddBlock(TGeoVolumeAssembly* tInnerWall,
       GeoTrapezoidHollow(nameInnerWall, wallThick, wz, wx(z1), wx(z2), wy(z1),
                          wy(z2), ribColor, supportMedIn);
   tInnerWall->AddNode(TIW, 0, new TGeoTranslation(0, 0, Zshift));
+  
+  ///PVC thickness
+  double pvcThick = 1 * mm;
 
   /// decay vacuum
   TString nameDecayVacuum = (TString)tDecayVacuum->GetName() + "_" + blockName;
-  TGeoVolume* TDV = GeoTrapezoid(nameDecayVacuum, wz, wx(z1), wx(z2), wy(z1),
-                                 wy(z2), 1, decayVolumeMed);
+  TGeoVolume* TDV = GeoTrapezoid(nameDecayVacuum, wz, wx(z1) - 2 * pvcThick, wx(z2) - 2 * pvcThick,
+                                 wy(z1) - 2 * pvcThick, wy(z2) - 2 * pvcThick,
+                                 1, decayVolumeMed);
   TDV->SetVisibility(kFALSE);
   tDecayVacuum->AddNode(TDV, 0, new TGeoTranslation(0, 0, Zshift));
+
+  /// PVC Layer
+  TString namePVCLayer = "PVCLayer_" + blockName;
+  TGeoMedium* pvcMed = gGeoManager->GetMedium("PVC");
+
+  // Use GeoTrapezoidHollow to make a shell around the vacuum
+  TGeoVolume* TPVC = GeoTrapezoidHollow(namePVCLayer, pvcThick, wz, 
+                                        wx(z1) - 2 * pvcThick, wx(z2) - 2 * pvcThick, 
+                                        wy(z1) - 2 * pvcThick, wy(z2) - 2 * pvcThick, 
+                                        kGreen, pvcMed);
+  tDecayVacuum->AddNode(TPVC, 0, new TGeoTranslation(0, 0, Zshift));
+
+  //Lid
+  double leadLidThick = 1.0 * cm; 
+  TGeoMedium* leadMed = gGeoManager->GetMedium("lead");
+  // We use GeoTrapezoid as a flat plate covering the inner width at z=0
+  TGeoVolume* TPvcLid = GeoTrapezoid("PVCEntranceLid", leadLidThick, 
+                                     wx(z1), wx(z2), 
+                                     wy(z1), wy(z2), 
+                                     kGreen, leadMed);
+  
+  // Shift it backwards by half its thickness so it ends exactly at z=0 
+  // and does not overlap with the Helium decay volume
+  double zLid = Zshift - (pvcLidThick / 2.0); 
+  
+  tTankVol->AddNode(TPvcLid, 0, new TGeoTranslation(0, 0, zLid));
 
   /// outer wall
   TString nameOuterWall = (TString)tOuterWall->GetName() + "_" + blockName;
@@ -409,7 +439,9 @@ void veto::AddBlock(TGeoVolumeAssembly* tInnerWall,
       wx(z2) + 2 * (wallThick + liscThick2),
       wy(z1) + 2 * (wallThick + liscThick1),
       wy(z2) + 2 * (wallThick + liscThick2), ribColor, supportMedIn);
-  tOuterWall->AddNode(TOW, 0, new TGeoTranslation(0, 0, Zshift));
+
+  double zLid = z1 - (leadLidThick / 2.0);
+  tOuterWall->AddNode(TOW, 0, new TGeoTranslation(0, 0, zLid));
 
   /// define longitudinal ribs
 
@@ -819,7 +851,7 @@ void veto::PreTrack() {
 
 /**
  * @brief Constructs the detector geometry.
- *
+ *m
  * This function is responsible for setting up the geometry of the
  * DecayVolume+SBT detector. It is called during the detector's construction
  * phase.
@@ -833,6 +865,8 @@ void veto::ConstructGeometry() {
   ShipGeo::InitMedium("helium");
   ShipGeo::InitMedium("Scintillator");
   ShipGeo::InitMedium("steel");
+  ShipGeo::InitMedium("PVC");
+  ShipGeo::InitMedium("lead");
 
   gGeoManager->SetNsegments(100);
 

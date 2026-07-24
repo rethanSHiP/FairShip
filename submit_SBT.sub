@@ -1,4 +1,4 @@
-OutDir = SBT
+OutDir = PVC
 
 executable   = run_wrapper_SBT.sh
 arguments = $(Energy) $(OutDir)
@@ -12,4 +12,4 @@ request_memory = 4GB
 +JobFlavour    = "microcentury"
 max_retries    = 3
 
-queue Energy in (1 2 3 4 5 6 7 8 9 10 15 20 25 30 35 40 45 50 55 60 65 70 75 80 85 90 95 100)
+queue Energy in (1 2 3 4 5 6 7 8 9 10 20 40 60 80 100)
