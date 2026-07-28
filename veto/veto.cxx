@@ -406,31 +406,32 @@ void veto::AddBlock(TGeoVolumeAssembly* tInnerWall,
   TDV->SetVisibility(kFALSE);
   tDecayVacuum->AddNode(TDV, 0, new TGeoTranslation(0, 0, Zshift));
 
-  /// PVC Layer
-  TString namePVCLayer = "PVCLayer_" + blockName;
+  /// PVC Containers
   TGeoMedium* pvcMed = gGeoManager->GetMedium("PVC");
 
-  // Use GeoTrapezoidHollow to make a shell around the vacuum
+  /// PVC Trapezoid
+  TString namePVCLayer = "PVCLayer_" + blockName;
   TGeoVolume* TPVC = GeoTrapezoidHollow(namePVCLayer, pvcThick, wz, 
                                         wx(z1) - 2 * pvcThick, wx(z2) - 2 * pvcThick, 
                                         wy(z1) - 2 * pvcThick, wy(z2) - 2 * pvcThick, 
                                         kGreen, pvcMed);
   tDecayVacuum->AddNode(TPVC, 0, new TGeoTranslation(0, 0, Zshift));
 
-  //Lid
-  double leadLidThick = 1.0 * cm; 
-  TGeoMedium* leadMed = gGeoManager->GetMedium("lead");
-  // We use GeoTrapezoid as a flat plate covering the inner width at z=0
-  TGeoVolume* TPvcLid = GeoTrapezoid("PVCEntranceLid", leadLidThick, 
-                                     wx(z1), wx(z2), 
-                                     wy(z1), wy(z2), 
-                                     kGreen, leadMed);
-  
-  // Shift it backwards by half its thickness so it ends exactly at z=0 
-  // and does not overlap with the Helium decay volume
-  double zLid = Zshift - (pvcLidThick / 2.0); 
-  
-  tTankVol->AddNode(TPvcLid, 0, new TGeoTranslation(0, 0, zLid));
+  /// PVC front lid 
+  TString namePVCLidFront = "PVCLidFront";
+  TGeoVolume* TPVCLF = GeoTrapezoid(namePVCLidFront, pvcThick, 
+                                        wx(z1) - 2 * pvcThick, wx(z1) - 2 * pvcThick, 
+                                        wy(z1) - 2 * pvcThick, wy(z1) - 2 * pvcThick, 
+                                        kGreen, pvcMed);
+  tDecayVacuum->AddNode(TPVCLF, 0, new TGeoTranslation(0, 0, Zshift - wz/2 - pvcThick/2));
+
+  /// PVC back lid
+  TString namePVCLidBack = "PVCLidBack";
+  TGeoVolume* TPVCLB = GeoTrapezoid(namePVCLidBack, pvcThick, 
+                                        wx(z2) - 2 * pvcThick, wx(z2) - 2 * pvcThick, 
+                                        wy(z2) - 2 * pvcThick, wy(z2) - 2 * pvcThick, 
+                                        kGreen, pvcMed);
+  tDecayVacuum->AddNode(TPVCLB, 0, new TGeoTranslation(0, 0, Zshift + wz/2 + pvcThick/2));
 
   /// outer wall
   TString nameOuterWall = (TString)tOuterWall->GetName() + "_" + blockName;
@@ -439,10 +440,7 @@ void veto::AddBlock(TGeoVolumeAssembly* tInnerWall,
       wx(z2) + 2 * (wallThick + liscThick2),
       wy(z1) + 2 * (wallThick + liscThick1),
       wy(z2) + 2 * (wallThick + liscThick2), ribColor, supportMedIn);
-
-  double zLid = z1 - (leadLidThick / 2.0);
-  tOuterWall->AddNode(TOW, 0, new TGeoTranslation(0, 0, zLid));
-
+      
   /// define longitudinal ribs
 
   std::vector<TGeoVolume*> vLongitRibX(nx);

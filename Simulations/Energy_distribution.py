@@ -130,13 +130,15 @@ def main():
         target_z = args.UBT_z
 
         # Obtain the matter density transversed
-        x_he_accum = np.zeros(len(x))
-        x_sbt_accum = np.zeros(len(x))
+        x_he_accum = np.zeros(len(x)) #He decay vol
+        x_sbt_accum = np.zeros(len(x)) # Scintillator inside SBT walls
+        x_pvc_accum = np.zeros(len(x)) # PVC to contain Helium
         distances = np.zeros(len(x))
         
         # Densities (g/cm^3)
         rho_he = 1.675e-4 
         rho_sbt = 1.032
+        rho_pvc = 1.30
 
         print(f"Propagating {len(x)} muons backwards...")
         # Propagate the muons backwards until they reach the UBT
@@ -180,23 +182,49 @@ def main():
             pz = np.sqrt(np.maximum(0, p_total**2 - px**2 - py**2))
             distances += ds
 
-            # Defining the limits of the SBT
+            # Defining the limits
             Z_start, Z_end = 3312.0, 8312.0
+            pvc_thick = 0.1 # 1 mm PVC thickness
 
+            # Inner wall (Boundary between PVC and SBT)
             Y_inner_limit = 270.0 + ((600.0 - 270.0) / (Z_end - Z_start)) * (z - Z_start)
-            Y_outer_limit = Y_inner_limit + 20.0
-
             X_inner_limit = 100.0 + ((400.0 - 100.0) / (Z_end - Z_start)) * (z - Z_start)
+
+            # Outer wall (Boundary between SBT and Cavern)
+            Y_outer_limit = Y_inner_limit + 20.0
             X_outer_limit = X_inner_limit + 20.0
+            
+            # PVC inner limit (Boundary between Helium and PVC)
+            Y_pvc_limit = Y_inner_limit - pvc_thick
+            X_pvc_limit = X_inner_limit - pvc_thick
 
             abs_y = np.abs(y)
             abs_x = np.abs(x)
 
-            in_decay_volume = (z >= Z_start) & (z <= Z_end)
-            in_helium = in_decay_volume & (abs_y <= Y_inner_limit) & (abs_x <= X_inner_limit)
-            in_sbt = in_decay_volume & (abs_y > Y_inner_limit) & (abs_y <= Y_outer_limit) & (abs_x > X_inner_limit) & (abs_x <= X_outer_limit)
+            # Chekcing material regions
+
+            in_z_full  = (z >= Z_start) & (z <= Z_end)
+            in_z_inner = (z > Z_start + pvc_thick) & (z < Z_end - pvc_thick)
+
+            inside_outer_sbt = (abs_x <= X_outer_limit) & (abs_y <= Y_outer_limit)
+            inside_inner_sbt = (abs_x <= X_inner_limit) & (abs_y <= Y_inner_limit)
+            inside_pvc       = (abs_x <= X_pvc_limit)   & (abs_y <= Y_pvc_limit)
+
+            # --- Define the actual material zones ---
+            # 1. SBT is between the outer and inner SBT boundaries
+            in_sbt = in_z_full & inside_outer_sbt & ~inside_inner_sbt
+
+            # 2. PVC consists of the two caps (front/back), plus the side walls
+            in_caps = in_z_full & ~in_z_inner & inside_inner_sbt
+            in_walls = in_z_inner & inside_inner_sbt & ~inside_pvc
+            in_pvc_total = in_caps | in_walls
+
+            # 3. Helium is strictly inside the PVC box
+            in_helium = in_z_inner & inside_pvc
             
+            # --- Accumulate Densities ---
             x_he_accum += np.where(in_helium, ds * rho_he, 0.0)
+            x_pvc_accum += np.where(in_pvc_total, ds * rho_pvc, 0.0)
             x_sbt_accum += np.where(in_sbt, ds * rho_sbt, 0.0)
 
         # Add results back to DataFrame
@@ -206,17 +234,20 @@ def main():
         ubt_momentum_reco = [px, py, pz]
         ubt_momentum_true = [mc_px, mc_py, mc_pz]
 
-        return ubt_positions_reco, ubt_positions_true, ubt_momentum_reco, ubt_momentum_true, x_he_accum, x_sbt_accum, distances
+        x_accum = [x_he_accum, x_pvc_accum ,x_sbt_accum]
+
+        return ubt_positions_reco, ubt_positions_true, ubt_momentum_reco, ubt_momentum_true, x_accum, distances
 
 
-    def Save_Propagated_Data(outputfile, pos_reco, pos_true, mom_reco, mom_true, x_he, x_sbt,dist):
+    def Save_Propagated_Data(outputfile, pos_reco, pos_true, mom_reco, mom_true, x_accum, dist):
         with uproot.recreate(outputfile) as f: 
             f["UBT_Muons"] = {
                 "X": pos_reco[0], "Y": pos_reco[1], "Z": pos_reco[2],
                 "X_true": pos_true[0], "Y_true": pos_true[1], "Z_true": pos_true[2],
                 "PX": mom_reco[0], "PY": mom_reco[1], "PZ": mom_reco[2],
                 "PX_true": mom_true[0], "PY_true": mom_true[1], "PZ_true": mom_true[2],
-                "x_He": x_he, "x_SBT": x_sbt, "distances":dist
+                "x_He": x_accum[0], "x_pvc": x_accum[1], "X_SBT": x_accum[2],
+                "distances":dist
                 }
 
     # ==========================================
@@ -229,13 +260,13 @@ def main():
     
     for i,sim in enumerate(simulation_paths): 
         print(f"Processing simulation: {sim})")
-        positions, true_positions, momentum, true_momentum, x_he, x_sbt, dist = Backward_Propagate_Muons(sim)
+        positions, true_positions, momentum, true_momentum, x_accum, dist = Backward_Propagate_Muons(sim)
         if len(positions[0]) == 0: continue
 
         name = os.path.basename(sim)
         output = os.path.join(output_dir, f"B_{name}")
         
-        Save_Propagated_Data(output,positions, true_positions, momentum, true_momentum, x_he, x_sbt, dist)
+        Save_Propagated_Data(output,positions, true_positions, momentum, true_momentum, x_accum, dist)
     print("New proccessed files created")
 
 if __name__ == "__main__":

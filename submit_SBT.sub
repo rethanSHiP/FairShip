@@ -1,4 +1,4 @@
-OutDir = PVC
+OutDir = SBT_PVC
 
 executable   = run_wrapper_SBT.sh
 arguments = $(Energy) $(OutDir)
