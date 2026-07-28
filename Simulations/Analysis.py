@@ -13,7 +13,6 @@ def main():
     parser = argparse.ArgumentParser(description="Propagate muons and plot deviations.")
     parser.add_argument("--sim_dir", default="energy_scan_reco", help="Path to simulation files")
     parser.add_argument("--hist_dir", default= None, help="Directory to save the plots")
-    parser.add_argument("--sbt", default= None, help="Directory to save the plots")
     args = parser.parse_args()
     if args.hist_dir is None: args.hist_dir = args.sim_dir
 
@@ -94,6 +93,7 @@ def main():
     p_values = []
     distances = []
     x_he_mean = []
+    x_pvc_mean = []
     x_sbt_mean = []
     
     for i, sim in enumerate(simulation_paths): 
@@ -106,7 +106,7 @@ def main():
            
             df_UBT = f["UBT_Muons"].arrays(["X", "Y", "Z", "X_true", "Y_true", "Z_true",
                                             "PX", "PY", "PZ", "PX_true", "PY_true", "PZ_true",
-                                            "x_He","x_SBT","distances"], 
+                                            "x_He","x_pvc","X_SBT","distances"], 
                                            library="np")
             if len(df_UBT) < 2: continue 
 
@@ -124,7 +124,8 @@ def main():
 
             # Store the true distance traveled and energy of each simulation file
             x_he_mean.append(np.mean(df_UBT["x_He"]))
-            x_sbt_mean.append(np.mean(df_UBT["x_SBT"]))
+            x_pvc_mean.append(np.mean(df_UBT["x_pvc"]))
+            x_sbt_mean.append(np.mean(df_UBT["X_SBT"]))
             
             distances.append(np.mean(df_UBT["distances"]))
             p_values.append(momentum_avg)
@@ -203,33 +204,23 @@ def main():
 
     p_total_raw = np.array(p_values, dtype=np.float64)
     x_he_raw = np.array(x_he_mean, dtype=np.float64)
+    x_pvc_raw = np.array(x_pvc_mean, dtype=np.float64)
     x_sbt_raw = np.array(x_sbt_mean, dtype=np.float64)
 
     # Sort to keep momentum and thicknesses cleanly aligned
     sort_idx = np.argsort(p_total_raw)
     p_total = p_total_raw[sort_idx]
     x_he_sorted = x_he_raw[sort_idx]
+    x_pvc_sorted = x_pvc_raw[sort_idx]
     x_sbt_sorted = x_sbt_raw[sort_idx]
     n_points = len(p_total)
 
     # Total mass thickness
-    x_total_sorted = x_he_sorted + x_sbt_sorted
+    x_sorted = [x_he_sorted, x_pvc_sorted, x_sbt_sorted]
+    A_materials = [4.0026, 62.5, 12.0]
+    Z_materials = [2, 32.0, 6.0]
 
-    #Transversing only helium
-    if args.sbt is None:
-        sig_theo = MC_scat.MC_scattering(p_total, x_total_sorted, A = 4.0026)
-
-    else:
-        sig_theo = MC_scat.MC_scattering(
-        p=p_total, 
-        x_total=x_total_sorted, 
-        SBT=True, 
-        x_He=x_he_sorted, 
-        x_SBT=x_sbt_sorted, 
-        A=4.0026, Z=2,       # Helium properties
-        A_SBT=12.0, Z_SBT=6.0 # Scintillator properties
-    )
-
+    sig_theo = MC_scat.MC_scattering(p_total,x_sorted, A_materials, Z_materials)
     sig_theo_mrad = sig_theo * 1000.0
     
     # Estimate spatial spread using average distance or dynamic bounds

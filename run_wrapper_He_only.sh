@@ -6,7 +6,7 @@ DEST_DIR=$2
 WORKDIR=/afs/cern.ch/work/r/rethan/public/FairShip
 cd ${WORKDIR}
 sleep $((RANDOM % 30))
-source /cvmfs/ship.cern.ch/26.04/setUp.sh
+source /cvmfs/ship.cern.ch/26.07/setUp.sh
 
 OUTPATH=${WORKDIR}/Simulations/${DEST_DIR}
 mkdir -p ${OUTPATH}
