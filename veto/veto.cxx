@@ -418,21 +418,23 @@ void veto::AddBlock(TGeoVolumeAssembly* tInnerWall,
   tDecayVacuum->AddNode(TPVC, 0, new TGeoTranslation(0, 0, Zshift));
 
   /// PVC front lid 
-  TString namePVCLidFront = "PVCLidFront";
-  TGeoVolume* TPVCLF = GeoTrapezoid(namePVCLidFront, pvcThick, 
-                                        wx(z1) - 2 * pvcThick, wx(z1) - 2 * pvcThick, 
-                                        wy(z1) - 2 * pvcThick, wy(z1) - 2 * pvcThick, 
-                                        kGreen, pvcMed);
-  tDecayVacuum->AddNode(TPVCLF, 0, new TGeoTranslation(0, 0, Zshift - wz/2 - pvcThick/2));
-
+  if (blockNr == 1){
+    TString namePVCLidFront = "PVCLidFront";
+    TGeoVolume* TPVCLF = GeoTrapezoid(namePVCLidFront, pvcThick, 
+                                          wx(z1), wx(z1), 
+                                          wy(z1), wy(z1), 
+                                          kGreen, pvcMed);
+    tDecayVacuum->AddNode(TPVCLF, 0, new TGeoTranslation(0, 0, Zshift - wz/2 - pvcThick/2));
+  }
   /// PVC back lid
-  TString namePVCLidBack = "PVCLidBack";
-  TGeoVolume* TPVCLB = GeoTrapezoid(namePVCLidBack, pvcThick, 
-                                        wx(z2) - 2 * pvcThick, wx(z2) - 2 * pvcThick, 
-                                        wy(z2) - 2 * pvcThick, wy(z2) - 2 * pvcThick, 
-                                        kGreen, pvcMed);
-  tDecayVacuum->AddNode(TPVCLB, 0, new TGeoTranslation(0, 0, Zshift + wz/2 + pvcThick/2));
-
+  if (blockNr == 2){
+    TString namePVCLidBack = "PVCLidBack";
+    TGeoVolume* TPVCLB = GeoTrapezoid(namePVCLidBack, pvcThick, 
+                                          wx(z2), wx(z2), 
+                                          wy(z2), wy(z2), 
+                                          kGreen, pvcMed);
+    tDecayVacuum->AddNode(TPVCLB, 0, new TGeoTranslation(0, 0, Zshift + wz/2 + pvcThick/2));
+  }
   /// outer wall
   TString nameOuterWall = (TString)tOuterWall->GetName() + "_" + blockName;
   TGeoVolume* TOW = GeoTrapezoidHollow(
@@ -864,7 +866,6 @@ void veto::ConstructGeometry() {
   ShipGeo::InitMedium("Scintillator");
   ShipGeo::InitMedium("steel");
   ShipGeo::InitMedium("PVC");
-  ShipGeo::InitMedium("lead");
 
   gGeoManager->SetNsegments(100);
 
