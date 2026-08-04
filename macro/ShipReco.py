@@ -149,8 +149,12 @@ run.SetSink(sink)
 ROOT.SetOwnership(sink, False)  # C++ FairRun takes ownership
 run.SetUserConfig("g4Config_basic.C")  # geant4 transport not used, only needed for creating VMC field
 rtdb = run.GetRuntimeDb()
-# -----Create geometry----------------------------------------------
-modules = shipDet_conf.configure(run, ShipGeo)
+# --- Backward compatibility patch for old EOS geofiles ---
+if not hasattr(ShipGeo.target, "length_fixed"):
+    import shipunit as u
+    ShipGeo.target.length_fixed = 158.64 * u.cm
+        
+    modules = shipDet_conf.configure(run, ShipGeo)
 # run.Init()
 sGeo = fgeo["FAIRGeom"]
 import geomGeant4
