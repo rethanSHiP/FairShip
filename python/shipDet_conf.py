@@ -222,7 +222,7 @@ def configure_strawtubes(yaml_file: str, ship_geo) -> None:
 
     # Choose frame material
     if ship_geo.strawDesign == 4:
-        ship_geo.strawtubes_geo.frame_material = "aluminium"
+        ship_geo.strawtubes_geo.frame_material = "Aluminium"
     elif ship_geo.strawDesign == 10:
         ship_geo.strawtubes_geo.frame_material = "steel"
 
@@ -301,6 +301,11 @@ def configure(run, ship_geo):
     TargetStation.SetLayerPosMat(
         ship_geo.target.xy, ship_geo.target.slices_length, ship_geo.target.slices_gap, ship_geo.target.slices_material
     )
+    target_version = getattr(ship_geo.target, "version", 1)
+    TargetStation.SetDesign(target_version)
+    if target_version >= 2:
+        TargetStation.SetLastDiskDiameter(ship_geo.target.xy2)
+    TargetStation.SetShieldingReferenceLength(ship_geo.target.length_fixed)
     detectorList.append(TargetStation)
 
     # For SND: support multiple designs

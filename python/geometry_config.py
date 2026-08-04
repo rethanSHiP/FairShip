@@ -11,7 +11,7 @@ from ShipGeoConfig import AttrDict, Config
 # nuTargetPassive = 1  #0 = with active layers, 1 = only passive
 
 # targetOpt      = 5  # 0=solid   >0 sliced, 5: 5 pieces of tungsten, 4 air slits, 17: molybdenum tungsten interleaved with H20
-# strawOpt       = 0  # 4=aluminium frame 10=steel frame (default)
+# strawOpt       = 0  # 4=Aluminium frame 10=steel frame (default)
 
 # Here you can select the MS geometry
 # The first row is the length of the magnets
@@ -159,7 +159,7 @@ def create_config(
     Args:
         DecayVolumeMedium: Medium in decay volume ("helium" or "vacuums"), default: "helium"
         Yheight: Height of vacuum tank in meters, default: 6.0
-        strawDesign: Straw tube design (4=aluminium frame, 10=steel frame), default: 10
+        strawDesign: Straw tube design (4=Aluminium frame, 10=steel frame), default: 10
         muShieldGeo: Muon shield geometry file (for experts), default: None
         shieldName: Name of shield configuration, default: "TRY_2025"
         nuTargetPassive: Target type (0=with active layers, 1=only passive), default: 1
@@ -210,6 +210,8 @@ def create_config(
     with open(c.target_yaml) as file:
         targetconfig = yaml.safe_load(file)
         c.target = AttrDict(targetconfig["target"])
+    if "version" not in c.target:
+        c.target.version = 1  # legacy design
 
     c.target.slices_length = []
     c.target.slices_gap = []
@@ -244,9 +246,16 @@ def create_config(
 
     c.hadronAbsorber = AttrDict()
 
+    # Downstream elements are positioned using the nominal length of the
+    # legacy target so that they stay put when a different (e.g. shorter)
+    # target design is selected. This is the single authoritative value for the
+    # fixed length; it is passed to ShipTargetStation (SetShieldingReferenceLength)
+    # so the proximity shielding stays independent of the actual target length.
+    c.target.length_fixed = 158.64 * u.cm
+
     c.hadronAbsorber.z = (
         c.target.z0
-        + c.target.length
+        + c.target.length_fixed
         + 96.1 * u.mm  # Distance between target and proximity shielding
         + 250 * u.mm  # Thickness of proximity shielding
         + 207.5 * u.mm  # Distance between hadron absorber and proximity shielding

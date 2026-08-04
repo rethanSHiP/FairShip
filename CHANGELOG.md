@@ -14,11 +14,16 @@ it in future.
 
 ### Added
 
+* 2026 BDF target design (33 pure tungsten disks with a larger rear block, steel core with serpentine He cooling grooves, jacket tube, flanges, upstream beam window and cover plate, and domed rear endcap), extracted from CATIA model ST1A07710_01_AB.02. Select with `--target-yaml geometry/target_config_2026.yaml`; the legacy design remains the default. Downstream elements are positioned using the nominal legacy target length so both designs can be compared directly.
+
 ### Changed
 
+* SBT sensitive medium is now LAB-based liquid scintillator (`LiquidScintillator`) rather than the plastic `Scintillator`, which remains in use by SplitCal
 * Use dense vectors instead of `std::map` for ShipStack track selection and index remapping, roughly halving CPU time and reducing peak memory for high-multiplicity events (e.g. kaon/pion splitting)
 
 ### Fixed
+
+* `veto` now registers the configured `sensitiveMed` instead of a hardcoded medium name; previously any other value resolved to a null `TGeoMedium`
 
 ### Removed
 
@@ -36,8 +41,11 @@ it in future.
 ### Changed
 
 * Flatten field-map storage and make the field evaluator reentrant
+* Changed option name from --target_composition to --target-composition in makeCascade and makeDecay
 
 ### Fixed
+
+* Update charm and beauty over mbias cross sections in run_fixedTarget
 
 * Fix pot branch in Decay tree from makeDecay
 * Fix check of existing particle pdg in makeCascade
@@ -349,7 +357,7 @@ it in future.
 
 * Add access to decoded numbers (stations, views etc.) of strawtubes hits
 * Add enough straws to cover aperture entirely
-* Add SST frame option (4 = aluminium, 10 = steel [default])
+* Add SST frame option (4 = Aluminium, 10 = steel [default])
 * Add z-offset to FixedTargetGenerator
 * Add missing --FixedTarget option to run_simScript.py
 
