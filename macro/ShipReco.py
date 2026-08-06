@@ -34,6 +34,7 @@ shipRoot_conf.configure()
 parser = ArgumentParser()
 
 parser.add_argument("-f", "--inputFile", dest="inputFile", help="Input file", required=True)
+parser.add_argument("-o", "--output", dest="outputDir", help="Output directory", default="")
 parser.add_argument(
     "-n", "--nEvents", dest="nEvents", help="Number of events to reconstruct", required=False, default=999999, type=int
 )
